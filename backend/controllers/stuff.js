@@ -92,7 +92,7 @@ exports.likeSauce = (req, res, next) => {
           $push: { usersLiked: userId },
         }
       )
-      .then((sauce) => res.status(200).json({ message: 'Sauce likée !' }))
+      .then(() => res.status(200).json({ message: 'Sauce likée !' }))
       .catch((error) => res.status(500).json({ error }));
   } else if (like === -1) {
     dataModelsSauce
@@ -103,7 +103,7 @@ exports.likeSauce = (req, res, next) => {
           $push: { usersDisliked: userId },
         }
       )
-      .then((sauce) => res.status(200).json({ message: 'Sauce dislikée !' }))
+      .then(() => res.status(200).json({ message: 'Sauce dislikée !' }))
       .catch((error) => res.status(500).json({ error }));
   } else {
     dataModelsSauce
@@ -115,7 +115,7 @@ exports.likeSauce = (req, res, next) => {
               { _id: sauceId },
               { $pull: { usersLiked: userId }, $inc: { likes: -1 } }
             )
-            .then((sauce) => {
+            .then(() => {
               res.status(200).json({ message: 'Sauce dislikée !' });
             })
             .catch((error) => res.status(500).json({ error }));
@@ -128,7 +128,7 @@ exports.likeSauce = (req, res, next) => {
                 $inc: { dislikes: -1 },
               }
             )
-            .then((sauce) => {
+            .then(() => {
               res.status(200).json({ message: 'Sauce likée !' });
             })
             .catch((error) => res.status(500).json({ error }));
