@@ -60,6 +60,8 @@ exports.deleteSauce = (req, res, next) => {
   dataModelsSauce
     .findOne({ _id: req.params.id })
     .then((sauce) => {
+      if (sauce.userId !== req.userId) throw new Error('Non autorisé');
+      // envoyer un 403
       const filename = sauce.imageUrl.split('/images/')[1];
       fs.unlink(`images/${filename}`, () => {
         dataModelsSauce
@@ -78,62 +80,68 @@ exports.getAllSauces = (req, res, next) => {
     .catch((error) => res.status(400).json({ error }));
 };
 
-exports.likeSauce = (req, res, next) => {
-  const sauceId = req.params.id;
-  const userId = req.body.userId;
-  const like = req.body.like;
+exports.rateSauce = (req, res, next) => {
+  // Recherche de la sauce avec l'ID spécifié dans les paramètres de la requête
+  dataModelsSauce
+    .findOne({ _id: req.params.id })
+    .then((sauce) => {
+      // Si la sauce n'est pas trouvée, retourne un message d'erreur avec un statut 404
+      if (!sauce) {
+        return res.status(404).json({ message: 'Sauce not found' });
+      }
 
-  if (like === 1) {
-    dataModelsSauce
-      .updateOne(
-        { _id: sauceId },
-        {
-          $inc: { likes: like },
-          $push: { usersLiked: userId },
+      // Trouve l'index de l'utilisateur actuel dans les tableaux usersLiked et usersDisliked
+      const userLikedIndex = sauce.usersLiked.indexOf(req.userId);
+      const userDislikedIndex = sauce.usersDisliked.indexOf(req.userId);
+
+      // Si l'utilisateur veut liker la sauce et qu'il ne l'a ni likée ni dislikée auparavant
+      if (
+        req.body.like === 1 &&
+        userLikedIndex === -1 &&
+        userDislikedIndex === -1
+      ) {
+        // Ajoute l'utilisateur aux utilisateurs ayant liké la sauce et incrémente le compteur de likes
+        sauce.usersLiked.push(req.userId);
+        sauce.likes += 1;
+      }
+      // Sinon, si l'utilisateur veut disliker la sauce et qu'il ne l'a ni likée ni dislikée auparavant
+      else if (
+        req.body.like === -1 &&
+        userDislikedIndex === -1 &&
+        userLikedIndex === -1
+      ) {
+        // Ajoute l'utilisateur aux utilisateurs ayant disliké la sauce et incrémente le compteur de dislikes
+        sauce.usersDisliked.push(req.userId);
+        sauce.dislikes += 1;
+      }
+      // Sinon, si l'utilisateur veut annuler son like ou dislike
+      else if (req.body.like === 0) {
+        // Si l'utilisateur a liké la sauce précédemment
+        if (userLikedIndex !== -1) {
+          // Retire l'utilisateur des utilisateurs ayant liké la sauce et décrémente le compteur de likes
+          sauce.usersLiked.splice(userLikedIndex, 1);
+          sauce.likes -= 1;
         }
-      )
-      .then(() => res.status(200).json({ message: 'Sauce likée !' }))
-      .catch((error) => res.status(500).json({ error }));
-  } else if (like === -1) {
-    dataModelsSauce
-      .updateOne(
-        { _id: sauceId },
-        {
-          $inc: { dislikes: -1 * like },
-          $push: { usersDisliked: userId },
+        // Si l'utilisateur a disliké la sauce précédemment
+        if (userDislikedIndex !== -1) {
+          // Retire l'utilisateur des utilisateurs ayant disliké la sauce et décrémente le compteur de dislikes
+          sauce.usersDisliked.splice(userDislikedIndex, 1);
+          sauce.dislikes -= 1;
         }
-      )
-      .then(() => res.status(200).json({ message: 'Sauce dislikée !' }))
-      .catch((error) => res.status(500).json({ error }));
-  } else {
-    dataModelsSauce
-      .findOne({ _id: sauceId })
-      .then((sauce) => {
-        if (sauce.usersLiked.includes(userId)) {
-          dataModelsSauce
-            .updateOne(
-              { _id: sauceId },
-              { $pull: { usersLiked: userId }, $inc: { likes: -1 } }
-            )
-            .then(() => {
-              res.status(200).json({ message: 'Sauce dislikée !' });
-            })
-            .catch((error) => res.status(500).json({ error }));
-        } else if (sauce.usersDisliked.includes(userId)) {
-          dataModelsSauce
-            .updateOne(
-              { _id: sauceId },
-              {
-                $pull: { usersDisliked: userId },
-                $inc: { dislikes: -1 },
-              }
-            )
-            .then(() => {
-              res.status(200).json({ message: 'Sauce likée !' });
-            })
-            .catch((error) => res.status(500).json({ error }));
-        }
-      })
-      .catch((error) => res.status(401).json({ error }));
-  }
+      }
+      // Sinon, si la valeur de like est invalide ou si l'utilisateur a déjà liké ou disliké la sauce
+      else {
+        // Retourne un message d'erreur avec un statut 400
+        return res
+          .status(400)
+          .json({ message: 'Invalid like value or user already rated' });
+      }
+
+      // Sauvegarde la sauce mise à jour dans la base de données
+      sauce
+        .save()
+        .then(() => res.status(200).json({ message: 'Sauce rated' }))
+        .catch((error) => res.status(400).json({ error }));
+    })
+    .catch((error) => res.status(500).json({ error }));
 };
