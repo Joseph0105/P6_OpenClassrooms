@@ -103,7 +103,7 @@ exports.rateSauce = (req, res, next) => {
         userDislikedIndex === -1
       ) {
         // Ajoute l'utilisateur aux utilisateurs ayant liké la sauce et incrémente le compteur de likes
-        sauce.usersLiked.push(req.userId);
+        sauce.usersLiked.push(req.auth.userId);
         sauce.likes += 1;
       }
       // Sinon, si l'utilisateur veut disliker la sauce et qu'il ne l'a ni likée ni dislikée auparavant
@@ -113,7 +113,7 @@ exports.rateSauce = (req, res, next) => {
         userLikedIndex === -1
       ) {
         // Ajoute l'utilisateur aux utilisateurs ayant disliké la sauce et incrémente le compteur de dislikes
-        sauce.usersDisliked.push(req.userId);
+        sauce.usersDisliked.push(req.auth.userId);
         sauce.dislikes += 1;
       }
       // Sinon, si l'utilisateur veut annuler son like ou dislike
