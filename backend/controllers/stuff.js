@@ -60,8 +60,7 @@ exports.deleteSauce = (req, res, next) => {
   dataModelsSauce
     .findOne({ _id: req.params.id })
     .then((sauce) => {
-      if (sauce.userId !== req.userId) throw new Error('Non autorisé');
-      // envoyer un 403
+      if (sauce.userId !== req.auth.userId) throw new Error('Non autorisé');
       const filename = sauce.imageUrl.split('/images/')[1];
       fs.unlink(`images/${filename}`, () => {
         dataModelsSauce
@@ -70,7 +69,10 @@ exports.deleteSauce = (req, res, next) => {
           .catch((error) => res.status(400).json({ error }));
       });
     })
-    .catch((error) => res.status(500).json({ error }));
+    .catch((error) => {
+      console.error(error);
+      res.status(500).json({ error });
+    });
 };
 
 exports.getAllSauces = (req, res, next) => {
@@ -91,8 +93,8 @@ exports.rateSauce = (req, res, next) => {
       }
 
       // Trouve l'index de l'utilisateur actuel dans les tableaux usersLiked et usersDisliked
-      const userLikedIndex = sauce.usersLiked.indexOf(req.userId);
-      const userDislikedIndex = sauce.usersDisliked.indexOf(req.userId);
+      const userLikedIndex = sauce.usersLiked.indexOf(req.auth.userId);
+      const userDislikedIndex = sauce.usersDisliked.indexOf(req.auth.userId);
 
       // Si l'utilisateur veut liker la sauce et qu'il ne l'a ni likée ni dislikée auparavant
       if (
